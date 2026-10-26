@@ -1,11 +1,4 @@
 ﻿# BÁO CÁO & HƯỚNG DẪN DỰ ÁN BACKEND QUẢN LÝ SINH VIÊN
-## BUỔI 4: KẾT NỐI SQL SERVER & SEQUELIZE ORM
-
-- **Họ và tên:** Đặng Hoàng Nam
-- **Mã sinh viên:** 525000384
-- **Công nghệ sử dụng:** Node.js, Express 5, TypeScript (ESM, NodeNext), Sequelize 6, Tedious, pnpm.
-
----
 
 ## 1. Cấu hình SQL Server Local
 
