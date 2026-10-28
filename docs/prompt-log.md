@@ -1,88 +1,78 @@
-﻿# NHẬT KÝ PROMPT ENGINEERING (BUỔI 06 / CHƯƠNG 05)
-## NÂNG CẤP API VỚI MIDDLEWARES & VALIDATION (ZOD, MORGAN)
+﻿# NHẬT KÝ PROMPT ENGINEERING (BUỔI 07 / CHƯƠNG 06)
+## NÂNG CẤP HỆ THỐNG VỚI AUTHENTICATION & AUTHORIZATION (JWT · BCRYPT · RBAC)
 
 ---
 
-## 1. PROMPT 0 — KHẢO SÁT, CHƯA VIẾT CODE (Trang 6)
-- **Context:** Tôi tiếp tục dự án quản lý sinh viên của Chương 04 bằng Express, TypeScript, pnpm; có CRUD và OpenAPI YAML.
-- **Task:** Đọc các file tôi cung cấp: `package.json`, `tsconfig`, `app/server`, `Route`, `Controller`, `Service` và `OpenAPI`. Xác định luồng POST.
-- **Constraint:** Không tạo project mới, không thay đổi file, không đọc/gửi bí mật từ `.env`; không phỏng đoán nội dung file chưa được cung cấp.
-- **Output:** Trả bảng “File — vai trò — giữ nguyên/sửa — lý do”, vị trí phù hợp để gắn Zod/Morgan và các rủi ro cần xác nhận.
-- **Kết quả thực tế:** Xác định chính xác vị trí chèn middleware vào `routes/sinhVien.routes.ts` trước Controller, giữ nguyên Service và Model.
+## 1. PROMPT 0 — KHẢO SÁT, CHƯA VIẾT CODE (Trang 5)
+- **Context:** Tôi tiếp tục project quản lý sinh viên sau Chương 05, dùng Express, TypeScript, pnpm, SQL Server + Sequelize; có Zod, Morgan và docs/openapi.yaml.
+- **Task:** Đọc các file tôi cung cấp; mô tả luồng Request hiện tại, cách DB kết nối và các vị trí nên thêm register/login, JWT Middleware.
+- **Constraint:** Chưa sửa hay tạo file, không tạo project mới, không đoán nội dung file thiếu, không yêu cầu mật khẩu hoặc toàn bộ `.env`.
+- **Output:** Trả bảng “file / đang làm gì / cần giữ hay sửa / lý do” và danh sách thông tin còn thiếu trước khi triển khai.
+- **Kết quả:** Xác định cần tạo riêng bảng `dbo.Users` (không trộn vào `SinhVien`), bổ sung `auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `jwt.ts`, `isAuth.ts`, `isAdmin.ts`.
 
 ---
 
-## 2. PROMPT 1 — GIẢI THÍCH MIDDLEWARE (Trang 7)
-- **Context:** Tôi đã có API GET `/api/v1/sinh-vien` chạy được trong Express TypeScript.
-- **Task:** Giải thích bằng một Request thực tế vai trò `req`, `res`, `next()` và thứ tự `app.use` -> `router` -> `controller`.
-- **Constraint:** Chỉ minh họa, không thay đổi API hay dữ liệu; nêu hai tình huống khi gọi và không gọi `next()`.
-- **Output:** Trình bày sơ đồ luồng ngắn, chú thích 5 dòng code minh họa và 3 câu hỏi để tự kiểm tra.
-- **Bài học rút ra:** Khi validation thất bại, Middleware gửi `res.status(400).json(...)` rồi bắt buộc phải `return`, không được gọi `next()`. Nếu không return, Express sẽ tiếp tục chuyển sang Controller gây lỗi "Cannot set headers after they are sent to the client".
+## 2. PROMPT 1 — TẠO SCHEMA USER VÀ MODEL (Trang 6)
+- **Context:** Backend hiện dùng SQL Server + Sequelize 6 và có bảng SinhVien thật; tôi cần bổ sung riêng bảng `dbo.Users` để học JWT.
+- **Task:** Đề xuất script SQL tạo `dbo.Users` an toàn nếu chưa có và Model Sequelize gồm `id, fullName, email, passwordHash, role`; rà soát quyền DB cần thiết.
+- **Constraint:** Không DROP/truncate/sync force/alter; không sửa bảng SinhVien, không lưu mật khẩu rõ; email unique; role mặc định student; giữ ESM/NodeNext.
+- **Output:** Liệt kê file, script SQL có điều kiện bảo vệ `IF NOT EXISTS`, Model TypeScript, lệnh chạy trong SSMS và SELECT dùng để xác minh cấu trúc.
 
 ---
 
-## 3. PROMPT 2 — TẠO ZOD SCHEMA (Trang 18)
-- **Context:** Tôi tiếp tục `backend-quan-ly-sinh-vien` Chương 04 bằng Express/TypeScript, có 5 API và nguồn dữ liệu hiện tại.
-- **Task:** Tạo `src/validations/sinhVien.schema.ts` gồm `createSinhVienSchema` và `updateSinhVienSchema`.
-- **Constraint:** POST yêu cầu 4 trường; PUT chỉ `hoTen/email/maLop`; trim chuỗi, từ chối trường lạ (`.strict()`); không đổi DB, URL hay kiến trúc.
-- **Output:** Trả code đúng đường dẫn, comment tiếng Việt, giải thích từng rule và ví dụ body hợp lệ/sai.
-- **Code tạo ra:** Sử dụng `z.object().strict()`, tái sử dụng `editableFields`, áp dụng `trim()` và giới hạn độ dài theo CSDL.
+## 3. PROMPT 2 — ĐĂNG KÝ VỚI BCRYPT (Trang 7)
+- **Context:** Dự án đã có User Model, Zod Middleware và mẫu response success/message/data; cần làm POST `/api/auth/register`.
+- **Task:** Viết Schema, Service, Controller và khai báo Route đăng ký; kiểm tra email trùng, hash bcrypt cost 12 rồi lưu User.
+- **Constraint:** Giữ kiến trúc cũ và SQL Server/Sequelize, không tạo project mới; người đăng ký chỉ là student; từ chối field role; không trả passwordHash.
+- **Output:** Trả danh sách file thay đổi, code đầy đủ đúng từng file, các status 201/400/409 và hướng dẫn test cả email trùng.
 
 ---
 
-## 4. PROMPT 3 — TẠO VALIDATION MIDDLEWARE (Trang 18)
-- **Context:** Tôi đã có hai Zod Schema từ bước trước và Response lỗi của Chương 04.
-- **Task:** Tạo `src/middlewares/validate.middleware.ts` dùng `safeParse` để chặn body sai.
-- **Constraint:** Giữ `success/message/data`; thêm `errors` (field/message) tùy chọn; HTTP 400 khi sai, `next()` khi đúng; không viết lại Controller.
-- **Output:** Trả code TypeScript, vị trí file, mô tả `req.body` và cách kiểm chứng bằng một Request POST sai.
-- **Điểm quan trọng:** Gán `req.body = parsed.data` để đảm bảo dữ liệu truyền vào Controller là dữ liệu đã được làm sạch và chuẩn hóa (đã trim khoảng trắng).
+## 4. PROMPT 3 — LOGIN + BCRYPT.COMPARE (Trang 8)
+- **Context:** Tôi đã hoàn thành Register, lưu passwordHash trong SQL Server và cần đăng nhập bằng email/password.
+- **Task:** Viết login Service/Controller: tìm User, dùng bcrypt.compare, đúng thì gọi generateToken và trả accessToken; sai thì 401.
+- **Constraint:** Không lưu plaintext; không log mật khẩu; không phân biệt “email không tồn tại” với “mật khẩu sai”; không dùng jwt.decode để xác minh.
+- **Output:** Trả file cần sửa, code TypeScript, ví dụ Request/Response 200 và 401, cùng cách kiểm thử bằng Postman.
 
 ---
 
-## 5. PROMPT 4 — GẮN MIDDLEWARE VÀO ROUTER (Trang 19)
-- **Context:** API Chương 04 đã khai báo POST/PUT trong `src/routes/sinhVien.routes.ts`.
-- **Task:** Chỉ ra cách bổ sung `validate(createSinhVienSchema)` và `validate(updateSinhVienSchema)` trước đúng Controller.
-- **Constraint:** Không tạo router/app mới; giữ GET/DELETE và các import ESM/NodeNext hiện hành (đuôi `.js`).
-- **Output:** Trả diff đoạn code cần thay, kèm 3 request kiểm tra.
+## 5. PROMPT 4 — GENERATETOKEN VÀ VERIFYTOKEN (Trang 9)
+- **Context:** Project Express + TypeScript ESM, đã có User Model và login; cần module `src/utils/jwt.ts` dùng jsonwebtoken.
+- **Task:** Viết generateToken nhận id/role, ký HS256 hết hạn 1 giờ; viết verifyToken xác minh chữ ký, hạn dùng và kiểu claims.
+- **Constraint:** Bí mật lấy từ process.env.JWT_SECRET; không hard-code; chỉ chấp nhận thuật toán HS256; không tin jwt.decode; giữ import .js của ESM.
+- **Output:** Trả code module, hướng dẫn cấu hình `.env.example` an toàn, vị trí gọi từ login và các trường hợp ký/xác minh thất bại.
 
 ---
 
-## 6. PROMPT 5 — MORGAN VÀ OPENAPI YAML (Trang 19)
-- **Context:** Tôi có Express app, `docs/openapi.yaml` và Swagger UI `/api-docs` từ Chương 04.
-- **Task:** Đề xuất bổ sung Morgan `access.log` (append) và mô tả `errors` Validation vào YAML hiện tại.
-- **Constraint:** Không log mật khẩu/token, không tạo Swagger JSDoc hay file openapi khác, giữ response contract cũ.
-- **Output:** Liệt kê file cần thay, phần code thêm tối thiểu, vị trí `app.use` và cách kiểm chứng file log/Swagger.
+## 6. PROMPT 5 — TẠO ISAUTH VÀ REQ.USER (Trang 10)
+- **Context:** Tôi đã có verifyToken, TypeScript Express và GET `/api/auth/profile` chưa được bảo vệ.
+- **Task:** Viết Middleware isAuth kiểm tra header Bearer, jwt.verify, xác minh payload rồi gán `req.user`; minh họa khai báo TypeScript cho `req.user`.
+- **Constraint:** 401 cho thiếu/sai/hết hạn token; không gọi next sau khi gửi lỗi; không trust payload chưa verify; không dùng any hay in secret ra log.
+- **Output:** Trả các file cần thêm/sửa và cách test: không token -> 401, token hợp lệ -> `req.user`; giải thích vì sao phải đặt isAuth trước controller.
 
 ---
 
-## 7. PROMPT 6 — PHÂN TÍCH CHECK QUYỀN (LIÊN THÔNG BUỔI 07) (Trang 17)
-- **Context:** Tôi học Buổi 06 về Middleware và đã có API SinhVien; Buổi 07 mới triển khai JWT.
-- **Task:** Giải thích cách một Middleware tương lai kiểm tra quyền admin trước PUT/DELETE.
-- **Constraint:** Chưa gắn vào API thật; không tin role từ `req.body/header` của Client; chỉ dùng role đã được Authentication xác minh.
-- **Output:** Bảng mã lỗi HTTP:
-  - `401 Unauthorized`: Khi client chưa xác thực (chưa gửi Token hoặc Token không hợp lệ/hết hạn).
-  - `403 Forbidden`: Khi client đã xác thực thành công (đã biết danh tính là sinh viên), nhưng tài nguyên yêu cầu quyền hạn cao hơn (chỉ dành cho `admin`).
-  - Pseudocode:
-    ```typescript
-    const authorizeRole = (requiredRole: string) => {
-      return (req, res, next) => {
-        // req.user được Authentication Middleware gắn vào sau khi verify JWT hợp lệ
-        if (!req.user || req.user.role !== requiredRole) {
-          return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
-        }
-        next();
-      };
-    };
-    ```
+## 7. PROMPT 6 — TẠO ISADMIN VÀ GIẢI THÍCH 403 (Trang 11)
+- **Context:** Middleware isAuth đã gán req.user từ JWT được xác minh; hệ thống học vụ có role student/admin.
+- **Task:** Viết isAdmin kiểm tra role là admin, không đủ quyền trả 403; nếu hợp lệ gọi next(); minh họa dùng chung với isAuth.
+- **Constraint:** Không nhận role từ req.body/req.query; không đổi 403 thành 401; nếu thiếu req.user phải xử lý an toàn, không gây lỗi 500.
+- **Output:** Cho code `src/middlewares/isAdmin.ts`, ví dụ gắn vào một Route cũ và 3 ca test thiếu token / student / admin.
 
 ---
 
-## 8. BÀI TẬP BẮT BUỘC A & B (Trang 21)
-- **Bài tập A (Mở rộng Validation):**
-  - Đã đối chiếu độ dài thực tế trong bảng `dbo.SinhVien`: `hoTen <= 150`, `email <= 254`, `maLop <= 50`, `maSV` định dạng regex `^SV[0-9]{3}$` (độ dài 5 ký tự).
-  - Đã tích hợp trực tiếp vào `sinhVien.schema.ts` với `.max()` và `.regex()`.
-  - Giải thích: Lỗi trùng `maSV` vẫn bắt buộc phải kiểm tra ở tầng dữ liệu/nghiệp vụ vì chỉ có CSDL hoặc Model mới nắm giữ toàn bộ danh sách các mã đang tồn tại trong hệ thống; Zod Schema là hàm phi trạng thái (stateless) chỉ kiểm tra được hình dạng và kiểu dữ liệu của request hiện thời.
-- **Bài tập B (Nhật ký Request Morgan):**
-  - File `logs/access.log` ghi nhận đầy đủ IP, Timestamp, HTTP Method, URL, Status Code (201, 200, 400, 404, 409) theo chuẩn `combined`.
-  - Cơ chế `flags: 'a'` (append) đảm bảo khi restart máy chủ, các dòng log mới tiếp tục được ghi nối vào cuối file, không bị ghi đè làm mất vết lịch sử hệ thống.
-  - Không bao giờ ghi mật khẩu, JWT token hay dữ liệu nhạy cảm vào log để tuân thủ tiêu chuẩn an toàn thông tin (OWASP Logging Cheat Sheet), tránh nguy cơ rò rỉ khi file log bị chia sẻ hoặc kiểm toán.
+## 8. PROMPT 7 — TÍCH HỢP KHÔNG LÀM HỎNG CRUD (Trang 12)
+- **Context:** Tôi có `routes/sinhVien.routes.ts` của Chương 05 với năm API CRUD và Zod Validation; nay đã có isAuth/isAdmin.
+- **Task:** Đặt isAuth rồi isAdmin vào POST/PUT/DELETE; giữ GET public, giữ nguyên handler, Service, endpoint và quy tắc dữ liệu cũ.
+- **Constraint:** Không tạo router, bảng, database hay app Express thứ hai; không bỏ Zod/Morgan/Swagger; không sửa response thành công của Admin.
+- **Output:** Trả diff file Route sau khi ghép và bảng ca test bảo đảm Admin đúng quyền, student bị chặn, CRUD cũ không hồi quy.
+
+---
+
+## 9. PROMPT 11 — ĐÓNG VAI SECURITY REVIEWER (Trang 18)
+- **Context:** Review bảo mật toàn bộ mã nguồn Authentication & Authorization trước khi nghiệm thu.
+- **Các nguy cơ bảo mật phát hiện và phương án khắc phục:**
+  1. *Lỗ hổng mật khẩu rõ (Plaintext password):* Khắc phục bằng việc sử dụng `bcrypt.hash(password, 12)` khi đăng ký và `bcrypt.compare()` khi đăng nhập.
+  2. *Lỗ hổng lộ khóa bí mật (Hard-coded secret):* Khắc phục bằng việc đọc `JWT_SECRET` từ `.env`, kiểm tra chuỗi rỗng và đưa vào `.gitignore`.
+  3. *Lỗ hổng tin tưởng role từ client:* Khắc phục bằng việc schema Register dùng `.strict()` từ chối thuộc tính `role`, gán cứng `role: 'student'` trong backend.
+  4. *Lỗ hổng dùng jwt.decode():* Tuyệt đối không dùng `jwt.decode` để xét quyền vì hàm này không kiểm tra chữ ký số (bất kỳ ai cũng sửa được payload); bắt buộc phải dùng `jwt.verify` với thuật toán `HS256`.
+  5. *Lỗ hổng rò rỉ dữ liệu nhạy cảm:* Model User và Service không bao giờ trả về trường `passwordHash` trong response hoặc token payload.

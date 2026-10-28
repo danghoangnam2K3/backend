@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import sinhVienRoutes from './routes/sinhVien.routes.js';
+import authRoutes from './routes/auth.routes.js'; // Router xác thực Authentication
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { accessLogger } from './middlewares/access-log.middleware.js'; // Morgan access logger
 import { errorMiddleware } from './middlewares/error.middleware.js';
@@ -38,13 +39,16 @@ app.get('/', (req, res) => {
   });
 });
 
-// Route /health phục vụ kiểm tra sức khỏe hệ thống & kiểm tra log (Test V11)
+// Route /health phục vụ kiểm tra sức khỏe hệ thống & kiểm tra log
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
   });
 });
+
+// Gắn router xác thực tài khoản (Register, Login, Profile)
+app.use('/api/auth', authRoutes);
 
 // Gắn router nghiệp vụ sinh viên
 app.use('/api/v1/sinh-vien', sinhVienRoutes);

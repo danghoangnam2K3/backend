@@ -149,3 +149,59 @@ Ngược lại, nếu dữ liệu không hợp lệ, Middleware sẽ phản hồ
 - **Task (Tác vụ):** Nêu nhiệm vụ đơn lẻ cụ thể cho từng bước (tạo Schema, viết Middleware, gắn Route).
 - **Constraint (Ràng buộc):** Đưa ra các ranh giới bất biến (không đổi DB, không sửa `maSV` qua body, từ chối trường lạ `.strict()`).
 - **Output (Đầu ra):** Chỉ định cụ thể định dạng code, chú thích tiếng Việt và kịch bản test để đối chiếu.
+
+---
+
+# PHẦN 6: BÁO CÁO THỰC HÀNH BUỔI 07 / CHƯƠNG 06 (AUTHENTICATION & AUTHORIZATION)
+
+## 1. ĐOẠN VĂN GIẢI THÍCH (5-8 CÂU) VỀ BCRYPT, JWT PAYLOAD, ISAUTH, ISADMIN & PHÂN BIỆT 401/403
+Cơ chế bảo mật của ứng dụng được xây dựng theo mô hình hai lớp phòng thủ độc lập nhưng kết hợp chặt chẽ: Xác thực danh tính (Authentication) và Phân quyền truy cập (Authorization).
+Mật khẩu người dùng khi đăng ký tuyệt đối không lưu ở dạng rõ (plaintext), mà được băm một chiều an toàn bằng thư viện **bcrypt** với chi phí muối (salt rounds) bằng 12 trước khi lưu vào SQL Server.
+Khi đăng nhập thành công, hệ thống cấp một mã định danh **JWT (JSON Web Token)** được ký bảo mật bằng thuật toán `HS256` với khóa bí mật `JWT_SECRET`; payload của token chỉ chứa thông tin công khai cần thiết gồm `sub` (User ID) và `role`, tuyệt đối không bao giờ chứa mật khẩu hoặc mã băm.
+Middleware **isAuth** đóng vai trò là chốt chặn đầu tiên, trích xuất Bearer Token từ header, dùng `jwt.verify()` kiểm tra tính hợp lệ và hạn dùng của chữ ký số; nếu thành công, nó sẽ gắn thông tin người dùng vào `req.user` và gọi `next()`, ngược lại trả về lỗi **401 Unauthorized** khi chưa xác thực.
+Tiếp theo, Middleware **isAdmin** đóng vai trò là chốt chặn thứ hai, kiểm tra thuộc tính `req.user.role`; nếu người dùng đã xác thực nhưng không phải là admin (ví dụ tài khoản sinh viên), request sẽ lập tức bị chặn với mã lỗi **403 Forbidden** (từ chối quyền truy cập) để bảo vệ các thao tác ghi dữ liệu nhạy cảm (POST, PUT, DELETE).
+
+---
+
+## 2. TRẢ LỜI ĐẦY ĐỦ 8 CÂU HỎI BẢO VỆ BÀI THỰC HÀNH (TRANG 21 ĐỀ BÀI)
+
+### Câu 01: Vì sao Register dùng bcrypt.hash() nhưng Login phải dùng bcrypt.compare()?
+- **Register:** Cần tạo ra một chuỗi băm một chiều (one-way hash) kèm chuỗi muối ngẫu nhiên (salt) từ mật khẩu người dùng nhập vào để lưu trữ an toàn trong CSDL. Do đó, ta sử dụng `bcrypt.hash(password, 12)`.
+- **Login:** Bcrypt là hàm băm một chiều không thể giải mã ngược (irreversible). Khi người dùng đăng nhập, ta không thể "giải mã" `passwordHash` trong DB để so sánh. Thay vào đó, hàm `bcrypt.compare(password, passwordHash)` sẽ trích xuất muối từ chuỗi hash cũ, băm mật khẩu mới nhập với cùng muối đó rồi so sánh kết quả xem có khớp hay không.
+
+### Câu 02: Vì sao JWT có chữ ký số mà vẫn không nên chứa passwordHash trong payload?
+- Phần payload của JWT chỉ được mã hóa dạng **Base64Url** chứ **KHÔNG HỀ ĐƯỢC MÃ HÓA BÍ MẬT (Not Encrypted)**.
+- Bất kỳ ai có được token đều có thể dùng các công cụ cơ bản hoặc trang `jwt.io` để đọc toàn bộ nội dung bên trong payload.
+- Nếu đưa `passwordHash` vào payload, kẻ tấn công sẽ lấy được chuỗi băm và có thể thực hiện tấn công ngoại tuyến (offline brute-force / dictionary attack) để dò ra mật khẩu gốc của người dùng.
+
+### Câu 03: Nếu User sửa chữ student thành admin trong payload JWT, điều gì xảy ra khi isAuth gọi jwt.verify?
+- Khi User tự ý giải mã Base64 và đổi `role: 'student'` thành `role: 'admin'`, nội dung phần Payload đã bị thay đổi.
+- Chữ ký số (Signature) ở phần thứ 3 của JWT được tạo ra từ công thức: `HMACSHA256(header + "." + payload, JWT_SECRET)`.
+- Khi `isAuth` gọi `jwt.verify(token, JWT_SECRET)`, thư viện sẽ tính toán lại chữ ký từ header và payload mới. Vì kẻ tấn công không có `JWT_SECRET`, chữ ký mới sẽ không khớp với chữ ký đính kèm trong token. Lệnh verify lập tức ném lỗi `JsonWebTokenError: invalid signature` và server phản hồi ngay HTTP 401 Unauthorized.
+
+### Câu 04: Phân biệt 401 và 403 bằng hai Request cụ thể trong B04 và A08:
+- **Mã 401 Unauthorized (Ca test A08 - GET /api/auth/profile không gửi Token):** Xảy ra khi Client **chưa xác minh được danh tính** (chưa xuất trình thẻ bài / token, token giả mạo hoặc token đã hết hạn). Hệ thống hoàn toàn không biết người gửi request là ai.
+- **Mã 403 Forbidden (Ca test B04 - DELETE /api/v1/sinh-vien/SV001 bằng Token Student):** Xảy ra khi Client **đã xác thực danh tính thành công** (hệ thống biết rõ người này là sinh viên qua JWT hợp lệ), nhưng tài nguyên yêu cầu quyền hạn cấp cao hơn (quyền Admin). Người dùng này bị cấm truy cập dù danh tính là hoàn toàn hợp lệ.
+
+### Câu 05: Tại sao phải gắn isAuth trước isAdmin? req.user được tạo ở đâu?
+- Phải gắn `isAuth` trước `isAdmin` vì **Xác thực phải đi trước Phân quyền** (phải biết người dùng là ai trước khi quyết định họ có quyền làm gì).
+- Thuộc tính `req.user` được tạo và gán giá trị **bên trong Middleware isAuth** sau khi hàm `verifyToken()` xác minh thành công.
+- Nếu đặt `isAdmin` lên trước `isAuth`, tại thời điểm `isAdmin` thực thi, `req.user` vẫn còn là `undefined`, dẫn đến việc kiểm tra quyền bị lỗi hoặc sập ứng dụng (TypeError).
+
+### Câu 06: Nếu Route DELETE chỉ được đánh dấu security trong Swagger nhưng không gắn isAdmin ở Express, có an toàn không?
+- **HOÀN TOÀN KHÔNG AN TOÀN.**
+- Swagger UI (`openapi.yaml`) chỉ là tài liệu giao diện người dùng. Việc đánh dấu `security` trong Swagger chỉ hiển thị biểu tượng chiếc ổ khóa trên trình duyệt để hướng dẫn người dùng nhập Token.
+- Nếu trong file mã nguồn Express (`src/routes/sinhVien.routes.ts`) không khai báo `isAuth, isAdmin` trước controller `xoaSinhVien`, thì bất kỳ ai gửi HTTP request trực tiếp bằng Postman, cURL hoặc script đều có thể xóa sạch dữ liệu sinh viên mà không bị bất kỳ rào cản nào chặn lại.
+
+### Câu 07: Nếu thay role của một User trong SQL Server sau khi đã cấp JWT, token cũ có cập nhật role ngay không? Muốn kiểm soát phải làm gì?
+- **Token cũ KHÔNG tự cập nhật role ngay.**
+- Do JWT là cơ chế phi trạng thái (stateless), các thông tin (claims) như `role` đã được đóng băng và ký số ngay tại thời điểm login. Miễn là token chưa hết hạn và chữ ký hợp lệ, `isAuth` vẫn sẽ đọc role cũ từ payload của token mà không truy vấn lại CSDL.
+- **Để kiểm soát:**
+  1. *Cách 1 (Ngắn hạn):* Giảm thời gian sống của Access Token xuống rất ngắn (ví dụ: 5 - 15 phút) kết hợp Refresh Token.
+  2. *Cách 2 (Real-time):* Trong Middleware phân quyền, dùng `userId = req.user.id` truy vấn lại bảng `dbo.Users` để lấy role hiện tại mới nhất từ CSDL.
+  3. *Cách 3:* Duy trì danh sách thu hồi token (Token Blacklist / Revocation List) lưu trên Redis để vô hiệu hóa token cũ ngay khi tài khoản bị thay đổi quyền.
+
+### Câu 08: Tại sao test 403 cần gọi GET/SELECT lại và không thể chỉ nhìn status là đủ?
+- Mã HTTP 403 trả về chỉ chứng minh server đã gửi phản hồi từ chối.
+- Tuy nhiên, trong thực tế có thể xảy ra lỗi lập trình (bug) khiến logic xóa trong Service vẫn vô tình chạy ngầm trước khi Middleware gửi phản hồi hoặc xử lý bất đồng bộ sai thứ tự.
+- Việc thực hiện `GET /api/v1/sinh-vien/SV001` hoặc truy vấn `SELECT` trực tiếp trong SQL Server ngay sau khi nhận 403 là bằng chứng hộp đen vững chắc nhất chứng minh rằng bản ghi vẫn còn tồn tại nguyên vẹn trong CSDL, dữ liệu không hề bị tác động hay biến đổi.

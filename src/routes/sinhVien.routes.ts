@@ -11,22 +11,36 @@ import {
   createSinhVienSchema,
   updateSinhVienSchema,
 } from '../validations/sinhVien.schema.js';
+import { isAuth } from '../middlewares/isAuth.js';
+import { isAdmin } from '../middlewares/isAdmin.js';
 
 const router = Router();
 
-// 1. GET /api/v1/sinh-vien -> Danh sách sinh viên
+// 1. GET /api/v1/sinh-vien -> Danh sách sinh viên (Public)
 router.get('/', getDanhSachSinhVien);
 
-// 2. GET /api/v1/sinh-vien/:maSV -> Chi tiết một sinh viên
+// 2. GET /api/v1/sinh-vien/:maSV -> Chi tiết một sinh viên (Public)
 router.get('/:maSV', getSinhVienTheoMa);
 
-// 3. POST /api/v1/sinh-vien -> Thêm mới sinh viên (áp dụng Validation Middleware)
-router.post('/', validate(createSinhVienSchema), taoSinhVien);
+// 3. POST /api/v1/sinh-vien -> Thêm mới sinh viên (Yêu cầu JWT & Quyền Admin)
+router.post(
+  '/',
+  isAuth,
+  isAdmin,
+  validate(createSinhVienSchema),
+  taoSinhVien
+);
 
-// 4. PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên (áp dụng Validation Middleware)
-router.put('/:maSV', validate(updateSinhVienSchema), capNhatSinhVien);
+// 4. PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên (Yêu cầu JWT & Quyền Admin)
+router.put(
+  '/:maSV',
+  isAuth,
+  isAdmin,
+  validate(updateSinhVienSchema),
+  capNhatSinhVien
+);
 
-// 5. DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên
-router.delete('/:maSV', xoaSinhVien);
+// 5. DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên (Yêu cầu JWT & Quyền Admin)
+router.delete('/:maSV', isAuth, isAdmin, xoaSinhVien);
 
 export default router;
