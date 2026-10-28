@@ -1,27 +1,29 @@
-import type { ErrorRequestHandler } from 'express';
+﻿import type { ErrorRequestHandler } from 'express';
 import { AppError } from '../utils/AppError.js';
 
-// Middleware tập trung xử lý mọi lỗi trong hệ thống
+// Middleware tập trung xử lý mọi lỗi trong hệ thống (chuẩn format { success, message, data: null })
 export const errorMiddleware: ErrorRequestHandler = (
   err,
   req,
   res,
   next
 ): void => {
-  // 1. Bắt lỗi AppError tùy chỉnh (chứa statusCode và message rõ ràng theo nghiệp vụ)
+  // 1. Bắt lỗi AppError tùy chỉnh
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
       message: err.message,
+      data: null,
     });
     return;
   }
 
-  // 2. Xử lý lỗi cú pháp JSON body do client gửi sai
+  // 2. Xử lý lỗi cú pháp JSON body
   if (err instanceof SyntaxError && 'status' in err && err.status === 400) {
     res.status(400).json({
       success: false,
       message: 'Dữ liệu JSON gửi lên không đúng định dạng',
+      data: null,
     });
     return;
   }
@@ -31,5 +33,6 @@ export const errorMiddleware: ErrorRequestHandler = (
   res.status(500).json({
     success: false,
     message: 'Lỗi hệ thống',
+    data: null,
   });
 };

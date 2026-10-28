@@ -1,9 +1,6 @@
 ﻿# BÁO CÁO THỰC HÀNH BUỔI 4: KẾT NỐI SQL SERVER & SEQUELIZE ORM
 
 - **Môn học:** Lập trình Backend
-- **Họ và tên:** Đặng Hoàng Nam
-- **Mã sinh viên:** 525000384
-- **Dự án:** Quản lý sinh viên với Node.js, Express 5, TypeScript và Sequelize ORM
 
 ---
 
@@ -67,3 +64,43 @@
 ### 5. Tại sao POST và GET phải đọc/ghi cùng một nguồn?
 - Nguyên tắc nhất quán dữ liệu (Data Consistency): Nếu API `POST` ghi dữ liệu vào một nơi (ví dụ ghi vào mảng RAM), trong khi API `GET` lại truy vấn từ một nơi khác (ví dụ đọc từ SQL Server), thì sau khi client thêm sinh viên thành công, gọi lệnh xem danh sách sẽ không bao giờ thấy sinh viên đó xuất hiện.
 - Việc đọc và ghi cùng một nguồn CSDL duy nhất bảo đảm trạng thái của hệ thống luôn đồng bộ, chính xác và phản ánh đúng những gì người dùng đã thực hiện.
+
+---
+
+# PHẦN 4: TRẢ LỜI ĐẦY ĐỦ CÂU HỎI CUỐI BUỔI 5 (TRANG 17 & TRANG 20 ĐỀ BÀI)
+
+### 1. PUT đi qua những file nào?
+- **server.ts**: Nhận request từ client, thông qua middleware `loggerMiddleware`, `express.json()` và chuyển đến router sinh viên mount tại `/api/v1/sinh-vien`.
+- **src/routes/sinhVien.routes.ts**: Nhận dạng method `PUT` tại đường dẫn con `/:maSV` và chuyển tiếp cho handler `capNhatSinhVien`.
+- **src/controllers/sinhVien.controller.ts**: Trích xuất `maSV = req.params.maSV` và `req.body`, gọi tầng nghiệp vụ `sinhVienService.capNhatSinhVien(maSV, req.body)` với từ khóa `await`. Khi có kết quả, trả về HTTP 200 kèm JSON chuẩn `{ success: true, message: "Cập nhật sinh viên thành công", data: ... }`.
+- **src/services/sinhVien.service.ts**: Thực hiện validation (kiểm tra đủ 3 trường `hoTen, email, maLop`, độ dài chuỗi, định dạng email), truy vấn CSDL qua `SinhVien.findByPk(maSV)`, nếu không thấy ném lỗi `AppError('Không tìm thấy sinh viên', 404)`. Nếu tìm thấy, gọi `sinhVien.update(...)` để cập nhật vào bảng `dbo.SinhVien`.
+- **src/models/SinhVien.ts**: Lớp Model ánh xạ trực tiếp đến bảng `dbo.SinhVien` trong SQL Server thông qua Sequelize ORM.
+
+### 2. Vì sao GET sau DELETE trả 404 là test đạt?
+- Sau khi gửi request `DELETE /api/v1/sinh-vien/SV003`, server trả về HTTP 200 báo đã xóa thành công.
+- Tuy nhiên, để chứng minh bản ghi đã thực sự bị xóa sạch khỏi cơ sở dữ liệu (thay vì server chỉ trả về phản hồi tĩnh "giả lập"), ta bắt buộc phải gọi lại `GET /api/v1/sinh-vien/SV003`.
+- Khi GET trả về **HTTP 404 Not Found**, điều này xác nhận CSDL không còn tìm thấy mã `SV003`, chứng minh thao tác xóa đã diễn ra triệt để và dữ liệu không bị tồn dư.
+
+### 3. Swagger YAML có tự xử lý nghiệp vụ không?
+- **HOÀN TOÀN KHÔNG.** File `docs/openapi.yaml` chỉ đóng vai trò là bản **hợp đồng mô tả giao diện API (API Contract Specification)** theo chuẩn quốc tế OpenAPI 3.0.3.
+- Thư viện `swagger-ui-express` chỉ đọc file YAML để dựng giao diện web trực quan tại `/api-docs` giúp lập trình viên xem và gửi request thử nghiệm.
+- Mọi logic nghiệp vụ (validation dữ liệu, kiểm tra trùng khóa chính, tính toán, kết nối CSDL, phân quyền) 100% đều do mã nguồn TypeScript Backend (`src/services/sinhVien.service.ts` và `src/controllers/sinhVien.controller.ts`) thực thi khi nhận request.
+
+### 4. Vì sao phải GET lại sau các thao tác ghi (POST, PUT, DELETE)?
+- Một API hoàn toàn có thể trả về HTTP 200/201 với JSON rất đẹp mắt ngay cả khi logic backend bị lỗi không ghi dữ liệu xuống CSDL.
+- Việc thực hiện lệnh `GET` ngay sau các thao tác ghi giúp:
+  - **Sau POST:** Chứng minh bản ghi mới đã được tạo và đọc lại được đầy đủ các thuộc tính.
+  - **Sau PUT:** Chứng minh các giá trị mới cập nhật đã đè lên dữ liệu cũ và dữ liệu cũ không bị giữ nguyên.
+  - **Sau DELETE:** Chứng minh bản ghi đã biến mất khỏi hệ thống (nhận về 404).
+- Đây là nguyên tắc kiểm thử hộp đen chuẩn nhằm xác minh tính lưu trữ bền vững (Data Persistence Verification).
+
+### 5. Sau restart server, dữ liệu có còn không?
+- **DỮ LIỆU HOÀN TOÀN CÒN NGUYÊN VẸN.**
+- Dự án đã kết nối trực tiếp với CSDL quan hệ **SQL Server 2019** (`QuanLySinhVienDB`).
+- Khi tiến trình Node.js (Express server) bị restart (`Ctrl + C` rồi chạy lại), chỉ có bộ nhớ RAM của tiến trình Node.js được giải phóng. Toàn bộ dữ liệu sinh viên đã được ghi bền vững xuống ổ cứng của máy chủ SQL Server thông qua Sequelize ORM, do đó không bị mất đi.
+
+### 6. Khung CTCO giúp viết Prompt rõ ràng như thế nào?
+- **Context (Bối cảnh):** Khai báo rõ công nghệ (Express 5, TypeScript NodeNext, Sequelize 6, SQL Server), cấu trúc 3 tầng hiện tại. Giúp AI không tự ý đổi kiến trúc, không sinh code JavaScript cũ và không dùng nhầm thư viện khác.
+- **Task (Nhiệm vụ):** Nêu rõ mục tiêu đơn lẻ cần thực hiện (ví dụ: bổ sung duy nhất API PUT hoặc chỉ viết file `docs/openapi.yaml`).
+- **Constraint (Ràng buộc):** Đưa ra các ranh giới kỹ thuật bắt buộc: không đổi `maSV` qua body, mã HTTP chính xác (400, 404, 409), import có đuôi `.js`, không dùng JSDoc. Giúp AI không phá vỡ logic cũ và tuân thủ đúng yêu cầu đề bài.
+- **Output (Đầu ra):** Chỉ định cụ thể những gì cần nhận về: file cần sửa, code hoàn chỉnh kèm giải thích tiếng Việt, kịch bản test kiểm chứng.

@@ -1,0 +1,296 @@
+﻿{
+	"info": {
+		"_postman_id": "b5a19824-5250-4892-9a01-000000000000",
+		"name": "Buoi5 - CRUD SinhVien",
+		"description": "Postman Collection hoàn chỉnh cho Buổi 5: RESTful CRUD và Swagger UI, kèm theo đầy đủ assertions kiểm thử tự động.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "01 GET list",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status la 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Tra ve mang sinh vien\", () => {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.success).to.eql(true);",
+							"    pm.expect(json.data).to.be.an(\"array\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "02 POST",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"POST trả 201\", () => {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"pm.test(\"Sinh viên mới đúng dữ liệu\", () => {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.success).to.eql(true);",
+							"    pm.expect(json.data.maSV).to.eql(\"SV003\");",
+							"    pm.expect(json.data.hoTen).to.eql(\"Ngọc Mai\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"maSV\": \"SV003\",\n  \"hoTen\": \"Ngọc Mai\",\n  \"email\": \"ngocmai@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "03 GET detail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status la 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Dung thong tin SV003\", () => {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.data.maSV).to.eql(\"SV003\");",
+							"    pm.expect(json.data.hoTen).to.eql(\"Ngọc Mai\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien/SV003",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien",
+						"SV003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "04 PUT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"PUT tra 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Cap nhat thanh cong\", () => {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.success).to.eql(true);",
+							"    pm.expect(json.data.hoTen).to.eql(\"Ngọc Mai Updated\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"hoTen\": \"Ngọc Mai Updated\",\n  \"email\": \"ngocmai@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien/SV003",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien",
+						"SV003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "05 GET verify",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"GET sau PUT trả dữ liệu mới\", () => {",
+							"    pm.response.to.have.status(200);",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.data.hoTen).to.eql(\"Ngọc Mai Updated\");",
+							"    pm.expect(json.data.email).to.eql(\"ngocmai@example.com\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien/SV003",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien",
+						"SV003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "06 DELETE",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"DELETE tra 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Xoa thanh cong khong co data\", () => {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.success).to.eql(true);",
+							"    pm.expect(json.data).to.be.undefined;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien/SV003",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien",
+						"SV003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "07 GET missing",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"GET sau DELETE trả 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"    const json = pm.response.json();",
+							"    pm.expect(json.success).to.eql(false);",
+							"    pm.expect(json.data).to.be.null;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/sinh-vien/SV003",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"sinh-vien",
+						"SV003"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		}
+	]
+}

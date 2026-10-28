@@ -1,19 +1,27 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import {
   getDanhSachSinhVien,
   getSinhVienTheoMa,
   taoSinhVien,
+  capNhatSinhVien,
+  xoaSinhVien,
 } from '../controllers/sinhVien.controller.js';
 
 const router = Router();
 
-// GET /api/v1/sinh-vien -> Lấy danh sách toàn bộ sinh viên
+// 1. GET /api/v1/sinh-vien -> Danh sách sinh viên
 router.get('/', getDanhSachSinhVien);
 
-// GET /api/v1/sinh-vien/:maSV -> Tìm kiếm sinh viên theo mã sinh viên
+// 2. GET /api/v1/sinh-vien/:maSV -> Chi tiết một sinh viên
 router.get('/:maSV', getSinhVienTheoMa);
 
-// POST /api/v1/sinh-vien -> Thêm mới một sinh viên
+// 3. POST /api/v1/sinh-vien -> Thêm mới sinh viên
 router.post('/', taoSinhVien);
+
+// 4. PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên
+router.put('/:maSV', capNhatSinhVien);
+
+// 5. DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên
+router.delete('/:maSV', xoaSinhVien);
 
 export default router;

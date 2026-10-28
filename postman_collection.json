@@ -1,6 +1,6 @@
 ﻿{
 	"info": {
-		"_postman_id": "c1f7a2d4-5250-4892-9a01-525000384dhn",
+		"_postman_id": "c1f7a2d4-5250-4892-9a01-000000000000",
 		"name": "Backend Sinh Vien - Buoi 4 SQL Server",
 		"description": "Collection kiểm thử đầy đủ các chức năng cho dự án Backend Quản lý Sinh viên kết nối SQL Server và Sequelize ORM.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
