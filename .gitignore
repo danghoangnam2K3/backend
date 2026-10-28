@@ -41,3 +41,6 @@ Desktop.ini
 scratch/
 scratch_test.json
 *.tmp
+
+logs/*.log
+logs/

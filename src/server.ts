@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import sinhVienRoutes from './routes/sinhVien.routes.js';
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
+import { accessLogger } from './middlewares/access-log.middleware.js'; // Morgan access logger
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { sequelize } from './config/database.js';
 import { swaggerSpec } from './config/swagger.config.js'; // Cấu hình Swagger OpenAPI
@@ -15,8 +16,9 @@ const app = express();
 // Lấy cổng từ biến môi trường .env, mặc định là cổng 5000
 const PORT = process.env.PORT || 5000;
 
-// 1. Middleware ghi log yêu cầu
+// 1. Middleware ghi log yêu cầu ra console & file logs/access.log (Morgan)
 app.use(loggerMiddleware);
+app.use(accessLogger);
 
 // 2. Middleware bảo mật và chia sẻ tài nguyên
 app.use(helmet());
@@ -33,6 +35,14 @@ app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Backend quản lý sinh viên đang hoạt động',
+  });
+});
+
+// Route /health phục vụ kiểm tra sức khỏe hệ thống & kiểm tra log (Test V11)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -57,7 +67,7 @@ async function start(): Promise<void> {
     await sequelize.authenticate();
     console.log('DB connected: QuanLySinhVienDB');
   } catch (error: any) {
-    console.warn('[DB Notice] Chưa kết nối được SQL Server (TCP 1433). Server tự động vận hành chế độ in-memory (RAM) để phục vụ Swagger UI và kiểm thử.');
+    console.warn('[DB Notice] Chưa kết nối được SQL Server. Server tự động vận hành chế độ in-memory (RAM) để phục vụ Swagger UI và kiểm thử.');
   }
 
   app.listen(PORT, () => {

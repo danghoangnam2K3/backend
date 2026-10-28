@@ -1,87 +1,88 @@
-﻿# Prompt log - Buổi 5: RESTful CRUD & Swagger
-
-
----
-
-## 1. Nhiệm vụ 1: Bổ sung API PUT (Cập nhật sinh viên)
-- **Bối cảnh và file tôi đã đưa cho AI:**
-  - Dự án Node.js, Express 5, TypeScript (NodeNext), Sequelize 6 kết nối SQL Server.
-  - Cung cấp: `src/routes/sinhVien.routes.ts`, `src/controllers/sinhVien.controller.ts`, `src/services/sinhVien.service.ts`.
-- **Prompt do tôi viết (theo CTCO):**
-  - *Context:* Tôi đang làm dự án quản lý sinh viên bằng Express và TypeScript theo kiến trúc Route -> Controller -> Service.
-  - *Task:* Hãy bổ sung PUT /api/v1/sinh-vien/:maSV.
-  - *Constraint:* Lấy maSV từ URL; body có đủ hoTen, email, maLop (không cho sửa maSV qua body). Body sai trả 400, không có mã trả 404, thành công trả 200. Giữ nguyên nguồn dữ liệu và kiến trúc.
-  - *Output:* Chỉ ra file cần sửa, cung cấp code đầy đủ và giải thích luồng xử lý.
-- **AI đề xuất thay đổi:**
-  - Thêm hàm `capNhatSinhVien` trong Service kiểm tra validation, tìm qua `SinhVien.findByPk(maSV)` và gọi `update()`.
-  - Thêm `capNhatSinhVien` trong Controller dùng async/await, trả về HTTP 200.
-  - Khai báo `router.put('/:maSV', capNhatSinhVien)` trong Route.
-- **File / đoạn code tôi đã đọc và sửa:**
-  - `src/services/sinhVien.service.ts`: bổ sung logic lọc trường chỉ cho phép `hoTen, email, maLop`.
-  - `src/controllers/sinhVien.controller.ts`: đọc `req.params.maSV` và `req.body`.
-  - `src/routes/sinhVien.routes.ts`: gắn phương thức PUT vào router.
-- **Build thực tế:** Lệnh `pnpm build` kết thúc thành công (exit code 0).
-- **Test T06 / T07 / T08:**
-  - T06 (PUT hợp lệ): Expected 200 -> Actual 200.
-  - T07 (PUT thiếu email): Expected 400 -> Actual 400.
-  - T08 (PUT SV9999): Expected 404 -> Actual 404.
-- **Cách tôi xác nhận dữ liệu:** Gọi `GET /api/v1/sinh-vien/SV003` ngay sau PUT để xác minh họ tên mới đã được ghi bền vững vào SQL Server.
-- **Tôi giải thích được điều gì:** Hiểu được `maSV` phải lấy từ `req.params`, còn dữ liệu cập nhật lấy từ `req.body`. Service không được nhận trực tiếp `req/res`.
-- **Vấn đề còn lại:** Không phát sinh lỗi.
+﻿# NHẬT KÝ PROMPT ENGINEERING (BUỔI 06 / CHƯƠNG 05)
+## NÂNG CẤP API VỚI MIDDLEWARES & VALIDATION (ZOD, MORGAN)
 
 ---
 
-## 2. Nhiệm vụ 2: Bổ sung API DELETE (Xóa sinh viên)
-- **Bối cảnh và file tôi đã đưa cho AI:**
-  - Tiếp nối 4 API đã có (GET list, GET detail, POST, PUT).
-  - Cung cấp Service, Controller, Route.
-- **Prompt do tôi viết (theo CTCO):**
-  - *Context:* Dự án quản lý sinh viên Express 5 + Sequelize.
-  - *Task:* Bổ sung DELETE /api/v1/sinh-vien/:maSV.
-  - *Constraint:* Lấy maSV từ URL; tìm thấy thì xóa trả 200 kèm thông báo thành công (không có data); không tìm thấy trả 404; không làm ảnh hưởng các API khác.
-  - *Output:* Cung cấp code sửa đổi và hướng dẫn kiểm thử.
-- **AI đề xuất thay đổi:**
-  - Thêm hàm `xoaSinhVien` trong Service: tìm bản ghi rồi gọi `destroy()`.
-  - Thêm `xoaSinhVien` trong Controller trả về `{ success: true, message: "Xóa sinh viên thành công" }`.
-  - Thêm `router.delete('/:maSV', xoaSinhVien)`.
-- **Build thực tế:** `pnpm build` biên dịch chuẩn xác.
-- **Test T10 / T11 / T12:**
-  - T10 (DELETE lần 1): Expected 200 -> Actual 200.
-  - T11 (GET sau khi xóa): Expected 404 -> Actual 404 (xác nhận bản ghi đã bị xóa sạch khỏi CSDL).
-  - T12 (DELETE lần 2): Expected 404 -> Actual 404.
-- **Tôi giải thích được điều gì:** Hiểu vì sao DELETE lần hai trả 404 là đúng (vì tài nguyên đã không còn tồn tại) và vì sao phải GET lại sau khi DELETE (để đảm bảo không bị lỗi "báo thành công nhưng DB vẫn còn").
+## 1. PROMPT 0 — KHẢO SÁT, CHƯA VIẾT CODE (Trang 6)
+- **Context:** Tôi tiếp tục dự án quản lý sinh viên của Chương 04 bằng Express, TypeScript, pnpm; có CRUD và OpenAPI YAML.
+- **Task:** Đọc các file tôi cung cấp: `package.json`, `tsconfig`, `app/server`, `Route`, `Controller`, `Service` và `OpenAPI`. Xác định luồng POST.
+- **Constraint:** Không tạo project mới, không thay đổi file, không đọc/gửi bí mật từ `.env`; không phỏng đoán nội dung file chưa được cung cấp.
+- **Output:** Trả bảng “File — vai trò — giữ nguyên/sửa — lý do”, vị trí phù hợp để gắn Zod/Morgan và các rủi ro cần xác nhận.
+- **Kết quả thực tế:** Xác định chính xác vị trí chèn middleware vào `routes/sinhVien.routes.ts` trước Controller, giữ nguyên Service và Model.
 
 ---
 
-## 3. Bài tự viết prompt mở rộng theo CTCO (Tìm sinh viên theo lớp)
+## 2. PROMPT 1 — GIẢI THÍCH MIDDLEWARE (Trang 7)
+- **Context:** Tôi đã có API GET `/api/v1/sinh-vien` chạy được trong Express TypeScript.
+- **Task:** Giải thích bằng một Request thực tế vai trò `req`, `res`, `next()` và thứ tự `app.use` -> `router` -> `controller`.
+- **Constraint:** Chỉ minh họa, không thay đổi API hay dữ liệu; nêu hai tình huống khi gọi và không gọi `next()`.
+- **Output:** Trình bày sơ đồ luồng ngắn, chú thích 5 dòng code minh họa và 3 câu hỏi để tự kiểm tra.
+- **Bài học rút ra:** Khi validation thất bại, Middleware gửi `res.status(400).json(...)` rồi bắt buộc phải `return`, không được gọi `next()`. Nếu không return, Express sẽ tiếp tục chuyển sang Controller gây lỗi "Cannot set headers after they are sent to the client".
 
-### A. Phân tích trước khi viết Prompt:
-- **Lý do chọn endpoint `GET /api/v1/sinh-vien/lop/:maLop`:**
-  - `maLop` là một thuộc tính phân loại nhóm của sinh viên (1 lớp có nhiều sinh viên).
-  - Ta đặt tiền tố `/lop/:maLop` để tránh xung đột với endpoint `/api/v1/sinh-vien/:maSV` (nếu đặt trùng mẫu đường dẫn có 1 tham số, Express sẽ không phân biệt được đâu là mã SV và đâu là mã lớp).
-  - Phương thức là `GET` vì đây là thao tác đọc dữ liệu (Idempotent), kết quả trả về là một mảng danh sách sinh viên thuộc lớp đó.
+---
 
-### B. Prompt theo khung CTCO hoàn chỉnh:
+## 3. PROMPT 2 — TẠO ZOD SCHEMA (Trang 18)
+- **Context:** Tôi tiếp tục `backend-quan-ly-sinh-vien` Chương 04 bằng Express/TypeScript, có 5 API và nguồn dữ liệu hiện tại.
+- **Task:** Tạo `src/validations/sinhVien.schema.ts` gồm `createSinhVienSchema` và `updateSinhVienSchema`.
+- **Constraint:** POST yêu cầu 4 trường; PUT chỉ `hoTen/email/maLop`; trim chuỗi, từ chối trường lạ (`.strict()`); không đổi DB, URL hay kiến trúc.
+- **Output:** Trả code đúng đường dẫn, comment tiếng Việt, giải thích từng rule và ví dụ body hợp lệ/sai.
+- **Code tạo ra:** Sử dụng `z.object().strict()`, tái sử dụng `editableFields`, áp dụng `trim()` và giới hạn độ dài theo CSDL.
 
-```text
-[CONTEXT]:
-Tôi đang phát triển dự án Backend Quản lý sinh viên bằng Node.js, Express 5, TypeScript (chuẩn ESM/NodeNext) và Sequelize 6 kết nối CSDL SQL Server (bảng dbo.SinhVien).
-Kiến trúc dự án tuân thủ nghiêm ngặt mô hình 3 tầng: Route -> Controller -> Service. Hiện tại hệ thống đã hoàn thiện 5 API RESTful CRUD cơ bản tại tiền tố /api/v1/sinh-vien.
+---
 
-[TASK]:
-Hãy bổ sung tính năng tra cứu danh sách sinh viên theo mã lớp: GET /api/v1/sinh-vien/lop/:maLop.
+## 4. PROMPT 3 — TẠO VALIDATION MIDDLEWARE (Trang 18)
+- **Context:** Tôi đã có hai Zod Schema từ bước trước và Response lỗi của Chương 04.
+- **Task:** Tạo `src/middlewares/validate.middleware.ts` dùng `safeParse` để chặn body sai.
+- **Constraint:** Giữ `success/message/data`; thêm `errors` (field/message) tùy chọn; HTTP 400 khi sai, `next()` khi đúng; không viết lại Controller.
+- **Output:** Trả code TypeScript, vị trí file, mô tả `req.body` và cách kiểm chứng bằng một Request POST sai.
+- **Điểm quan trọng:** Gán `req.body = parsed.data` để đảm bảo dữ liệu truyền vào Controller là dữ liệu đã được làm sạch và chuẩn hóa (đã trim khoảng trắng).
 
-[CONSTRAINT]:
-1. Giữ nguyên toàn bộ 5 API CRUD hiện tại, không làm thay đổi các chức năng cũ.
-2. Endpoint: GET /api/v1/sinh-vien/lop/:maLop (lấy maLop từ req.params.maLop, kiểm tra chuỗi không rỗng).
-3. Service: Sử dụng SinhVien.findAll({ where: { maLop }, order: [['maSV', 'ASC']] }) để truy vấn dữ liệu từ SQL Server, chuyển đổi sang plain DTO (ISinhVienDTO[]).
-4. Phản hồi:
-   - Thành công: HTTP 200, format { success: true, message: "Lấy danh sách sinh viên theo lớp thành công", data: [ ... ] }. Nếu lớp không có sinh viên nào, trả về mảng rỗng [] với HTTP 200 (không trả 404 vì đây là tập hợp rỗng hợp lệ).
-   - Lỗi tham số: HTTP 400 nếu maLop không hợp lệ.
-5. Đảm bảo toàn bộ import nội bộ đều có đuôi .js theo chuẩn NodeNext.
+---
 
-[OUTPUT]:
-1. Chỉ rõ các file cần chỉnh sửa (Route, Controller, Service).
-2. Trả về đầy đủ nội dung code cập nhật của từng file (kèm chú thích tiếng Việt rõ ràng, không dùng dấu ba chấm thay code).
-3. Hướng dẫn kịch bản kiểm thử trên Postman (ca lớp có sinh viên và ca lớp không có sinh viên).
-```
+## 5. PROMPT 4 — GẮN MIDDLEWARE VÀO ROUTER (Trang 19)
+- **Context:** API Chương 04 đã khai báo POST/PUT trong `src/routes/sinhVien.routes.ts`.
+- **Task:** Chỉ ra cách bổ sung `validate(createSinhVienSchema)` và `validate(updateSinhVienSchema)` trước đúng Controller.
+- **Constraint:** Không tạo router/app mới; giữ GET/DELETE và các import ESM/NodeNext hiện hành (đuôi `.js`).
+- **Output:** Trả diff đoạn code cần thay, kèm 3 request kiểm tra.
+
+---
+
+## 6. PROMPT 5 — MORGAN VÀ OPENAPI YAML (Trang 19)
+- **Context:** Tôi có Express app, `docs/openapi.yaml` và Swagger UI `/api-docs` từ Chương 04.
+- **Task:** Đề xuất bổ sung Morgan `access.log` (append) và mô tả `errors` Validation vào YAML hiện tại.
+- **Constraint:** Không log mật khẩu/token, không tạo Swagger JSDoc hay file openapi khác, giữ response contract cũ.
+- **Output:** Liệt kê file cần thay, phần code thêm tối thiểu, vị trí `app.use` và cách kiểm chứng file log/Swagger.
+
+---
+
+## 7. PROMPT 6 — PHÂN TÍCH CHECK QUYỀN (LIÊN THÔNG BUỔI 07) (Trang 17)
+- **Context:** Tôi học Buổi 06 về Middleware và đã có API SinhVien; Buổi 07 mới triển khai JWT.
+- **Task:** Giải thích cách một Middleware tương lai kiểm tra quyền admin trước PUT/DELETE.
+- **Constraint:** Chưa gắn vào API thật; không tin role từ `req.body/header` của Client; chỉ dùng role đã được Authentication xác minh.
+- **Output:** Bảng mã lỗi HTTP:
+  - `401 Unauthorized`: Khi client chưa xác thực (chưa gửi Token hoặc Token không hợp lệ/hết hạn).
+  - `403 Forbidden`: Khi client đã xác thực thành công (đã biết danh tính là sinh viên), nhưng tài nguyên yêu cầu quyền hạn cao hơn (chỉ dành cho `admin`).
+  - Pseudocode:
+    ```typescript
+    const authorizeRole = (requiredRole: string) => {
+      return (req, res, next) => {
+        // req.user được Authentication Middleware gắn vào sau khi verify JWT hợp lệ
+        if (!req.user || req.user.role !== requiredRole) {
+          return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện thao tác này' });
+        }
+        next();
+      };
+    };
+    ```
+
+---
+
+## 8. BÀI TẬP BẮT BUỘC A & B (Trang 21)
+- **Bài tập A (Mở rộng Validation):**
+  - Đã đối chiếu độ dài thực tế trong bảng `dbo.SinhVien`: `hoTen <= 150`, `email <= 254`, `maLop <= 50`, `maSV` định dạng regex `^SV[0-9]{3}$` (độ dài 5 ký tự).
+  - Đã tích hợp trực tiếp vào `sinhVien.schema.ts` với `.max()` và `.regex()`.
+  - Giải thích: Lỗi trùng `maSV` vẫn bắt buộc phải kiểm tra ở tầng dữ liệu/nghiệp vụ vì chỉ có CSDL hoặc Model mới nắm giữ toàn bộ danh sách các mã đang tồn tại trong hệ thống; Zod Schema là hàm phi trạng thái (stateless) chỉ kiểm tra được hình dạng và kiểu dữ liệu của request hiện thời.
+- **Bài tập B (Nhật ký Request Morgan):**
+  - File `logs/access.log` ghi nhận đầy đủ IP, Timestamp, HTTP Method, URL, Status Code (201, 200, 400, 404, 409) theo chuẩn `combined`.
+  - Cơ chế `flags: 'a'` (append) đảm bảo khi restart máy chủ, các dòng log mới tiếp tục được ghi nối vào cuối file, không bị ghi đè làm mất vết lịch sử hệ thống.
+  - Không bao giờ ghi mật khẩu, JWT token hay dữ liệu nhạy cảm vào log để tuân thủ tiêu chuẩn an toàn thông tin (OWASP Logging Cheat Sheet), tránh nguy cơ rò rỉ khi file log bị chia sẻ hoặc kiểm toán.

@@ -156,6 +156,12 @@ components:
       properties:
         success: {type: boolean, enum: [true], example: true}
         message: {type: string, example: Xóa sinh viên thành công}
+    ValidationIssue:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string, example: email }
+        message: { type: string, example: Email không hợp lệ }
     ErrorResponse:
       type: object
       required: [success, message, data]
@@ -163,6 +169,11 @@ components:
         success: {type: boolean, enum: [false], example: false}
         message: {type: string, example: Yêu cầu không thực hiện được}
         data: {type: object, nullable: true, example: null}
+        errors:
+          type: array
+          description: Chi tiết lỗi Validation (nếu có)
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
   responses:
     BadRequest:
       description: Dữ liệu đầu vào không hợp lệ

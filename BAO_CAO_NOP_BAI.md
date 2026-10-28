@@ -104,3 +104,48 @@
 - **Task (Nhiệm vụ):** Nêu rõ mục tiêu đơn lẻ cần thực hiện (ví dụ: bổ sung duy nhất API PUT hoặc chỉ viết file `docs/openapi.yaml`).
 - **Constraint (Ràng buộc):** Đưa ra các ranh giới kỹ thuật bắt buộc: không đổi `maSV` qua body, mã HTTP chính xác (400, 404, 409), import có đuôi `.js`, không dùng JSDoc. Giúp AI không phá vỡ logic cũ và tuân thủ đúng yêu cầu đề bài.
 - **Output (Đầu ra):** Chỉ định cụ thể những gì cần nhận về: file cần sửa, code hoàn chỉnh kèm giải thích tiếng Việt, kịch bản test kiểm chứng.
+
+---
+
+# PHẦN 5: BÁO CÁO THỰC HÀNH BUỔI 06 / CHƯƠNG 05 (MIDDLEWARES & VALIDATION)
+
+## 1. ĐOẠN VĂN GIẢI THÍCH (5-7 CÂU) VỀ MIDDLEWARE, NEXT(), ZOD & MORGAN
+Trong kiến trúc Express, **Middleware** đóng vai trò là trạm kiểm soát trung gian nằm giữa Route và Controller, tiếp nhận bộ ba tham số `req`, `res` và `next()`.
+Hàm `next()` là cơ chế chuyển giao điều khiển; nếu dữ liệu hợp lệ, Middleware gọi `next()` để chuyển sang tầng Controller tiếp tục xử lý nghiệp vụ.
+Ngược lại, nếu dữ liệu không hợp lệ, Middleware sẽ phản hồi ngay lập tức mã lỗi HTTP 400 và `return` (ngắt mạch luồng xử lý), tuyệt đối không gọi `next()` để ngăn chặn rác dữ liệu đi vào Controller và CSDL.
+**Zod** được sử dụng để định nghĩa Schema hợp đồng dữ liệu cho `req.body`, sử dụng phương thức `safeParse()` để kiểm tra kiểu dữ liệu, bắt buộc chuỗi không rỗng (`trim()`) và từ chối các trường lạ ngoài hợp đồng bằng `.strict()`.
+Đồng thời, **Morgan** được tích hợp ở chế độ nối tiếp (append mode: `flags: 'a'`) để tự động ghi lại toàn bộ nhật ký truy cập HTTP vào file `logs/access.log`, cung cấp dữ liệu kiểm toán hệ thống chuẩn xác mà không lưu trữ các thông tin bảo mật nhạy cảm.
+
+---
+
+## 2. TRẢ LỜI CÁC CÂU HỎI VẤN ĐÁP CỦA GIẢNG VIÊN (TRANG 21 ĐỀ BÀI)
+
+### Câu 1: Middleware nằm trước hay sau Controller?
+- **Trả lời:** Middleware nằm **TRƯỚC** Controller.
+- Khi một HTTP Request đến, thứ tự thực thi là: `Route` $\rightarrow$ `Middleware (Zod validate)` $\rightarrow$ `Controller` $\rightarrow$ `Service`.
+- Nếu dữ liệu hợp lệ, Middleware gọi `next()` để chuyển sang Controller. Nếu dữ liệu sai, Middleware trả về HTTP 400 kèm danh sách lỗi và `return` ngay (ngắt mạch - short-circuit), Controller phía sau hoàn toàn không bị kích hoạt.
+
+### Câu 2: safeParse khác parse ở điểm nào?
+- **parse():** Nếu dữ liệu không khớp schema, `parse()` sẽ tự động ném ra ngoại lệ (`throw Error`). Điều này buộc lập trình viên phải đặt trong khối `try/catch`, nếu không bắt được lỗi sẽ dẫn đến crash tiến trình hoặc rơi vào lỗi 500 không mong muốn.
+- **safeParse():** Không bao giờ throw ngoại lệ. Phương thức này luôn trả về một đối tượng kết quả an toàn: `{ success: true, data }` khi hợp lệ hoặc `{ success: false, error }` khi thất bại. Nhờ đó, Middleware dễ dàng kiểm tra `!parsed.success` và trích xuất mảng `error.issues` để trả về HTTP 400 chi tiết và tường minh.
+
+### Câu 3: Khi nào trả 400, 401, 403, 404, 409?
+- **400 Bad Request:** Khi dữ liệu gửi lên bị sai cú pháp, thiếu trường bắt buộc, sai định dạng (ví dụ: email sai, có trường lạ ngoài hợp đồng bị Zod từ chối).
+- **401 Unauthorized:** Khi client chưa xác minh được danh tính (chưa đăng nhập, thiếu JWT Token hoặc Token hết hạn).
+- **403 Forbidden:** Khi client đã đăng nhập thành công (đã xác thực danh tính), nhưng không có quyền hạn đối với tài nguyên (ví dụ: sinh viên cố tình thực hiện thao tác xóa sinh viên của Admin).
+- **404 Not Found:** Khi không tìm thấy tài nguyên theo mã định danh (ví dụ: tìm hoặc sửa sinh viên với mã không tồn tại `SV9999`).
+- **409 Conflict:** Khi xảy ra xung đột trạng thái dữ liệu (ví dụ: thêm sinh viên với mã sinh viên đã tồn tại trong CSDL).
+
+### Câu 4: Vì sao YAML không thay thế cho Zod?
+- **OpenAPI YAML:** Chỉ là tài liệu tĩnh mô tả hợp đồng giao tiếp (Contract Description) và dựng giao diện Swagger UI ở thời điểm thiết kế. YAML không có khả năng tự động can thiệp hay kiểm tra dữ liệu ở runtime của Express.
+- **Zod:** Là thư viện thực thi trực tiếp bằng mã TypeScript trong tiến trình chạy thực tế của server, đóng vai trò là "người gác cổng" ngăn chặn dữ liệu sai lọt vào hệ thống.
+
+### Câu 5: Làm sao biết Validation không phá vỡ API cũ?
+- Thực hiện **Kiểm thử hồi quy (Regression Test)**: Sau khi gắn Middleware Zod, ta chạy lại toàn bộ 12 ca kiểm thử bắt buộc (T01 - T12) của Chương 04.
+- Kết hợp thực hiện lệnh `GET` kiểm chứng ngay sau mỗi thao tác ghi (POST, PUT, DELETE) để xác nhận hệ thống vẫn hoạt động chính xác và không bị lỗi phụ.
+
+### Câu 6: Khung CTCO giúp AI không viết sai dự án như thế nào?
+- **Context (Bối cảnh):** Khai báo rõ công nghệ (Express 5, TypeScript ESM, Sequelize 6, SQL Server) và các file hiện có, ngăn AI tự tiện tạo project mới hoặc dùng CommonJS.
+- **Task (Tác vụ):** Nêu nhiệm vụ đơn lẻ cụ thể cho từng bước (tạo Schema, viết Middleware, gắn Route).
+- **Constraint (Ràng buộc):** Đưa ra các ranh giới bất biến (không đổi DB, không sửa `maSV` qua body, từ chối trường lạ `.strict()`).
+- **Output (Đầu ra):** Chỉ định cụ thể định dạng code, chú thích tiếng Việt và kịch bản test để đối chiếu.
